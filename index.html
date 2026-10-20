@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>EcoLoc Алматы</title>
+<meta name="description" content="Сортировка отходов в Алматы: карта баков, AI-сортировщик и эко-калькулятор">
+<meta name="theme-color" content="#059669" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#047857" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="EcoLoc">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="48x48" href="icons/icon-48.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root {
+  --bg: #f0fdf4;
+  --surface: #ffffff;
+  --primary: #059669;
+  --primary-dark: #047857;
+  --secondary: #0ea5e9;
+  --accent: #f59e0b;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --shadow: 0 10px 25px -5px rgba(0,0,0,.06);
+  --radius: 16px;
+  --danger: #ef4444;
+  --header-bg: rgba(255,255,255,.88);
+}
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --shadow: 0 10px 25px -5px rgba(0,0,0,.4);
+  --header-bg: rgba(30,41,59,.88);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body { background: var(--bg); color: var(--text); line-height: 1.6; transition: background .3s, color .3s; }
+
+header { position: sticky; top: 0; z-index: 1200; background: var(--header-bg); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+.nav-container { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .8rem 1.2rem; }
+.logo { font-size: 1.35rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: .5rem; white-space: nowrap; }
+.nav-items { display: flex; gap: 1.1rem; list-style: none; align-items: center; min-width: 0; }
+.nav-items a { text-decoration: none; color: var(--text); font-weight: 600; font-size: .88rem; transition: color .2s; white-space: nowrap; }
+.nav-items a:hover { color: var(--primary); }
+.nav-links { display: flex; gap: 1.1rem; align-items: center; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.nav-links::-webkit-scrollbar { display: none; }
+.nav-tools { display: flex; gap: .5rem; align-items: center; }
+.icon-btn { background: none; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; cursor: pointer; color: var(--text); padding: .35rem .6rem; font-weight: 700; }
+.icon-btn:hover { border-color: var(--primary); color: var(--primary); }
+.lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.lang-toggle button { background: none; border: none; color: var(--text); padding: .35rem .65rem; font-weight: 700; font-size: .82rem; cursor: pointer; }
+.lang-toggle button[aria-pressed="true"] { background: var(--primary); color: #fff; }
+@media (max-width: 860px) {
+  .nav-container { flex-wrap: wrap; }
+  .nav-items { order: 3; width: 100%; }
+  .nav-links { width: 100%; }
+}
+
+.container { max-width: 1280px; margin: 1.5rem auto; padding: 0 1.2rem; }
+.hero { background: linear-gradient(135deg, rgba(5,150,105,.14), rgba(14,165,233,.12)); border-radius: var(--radius); padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--border); }
+.hero h1 { font-size: 1.9rem; line-height: 1.25; margin-bottom: .7rem; color: var(--primary); text-wrap: balance; }
+.hero p { color: var(--text-muted); font-size: 1.05rem; max-width: 880px; }
+.hero-actions { display: flex; gap: .8rem; flex-wrap: wrap; margin-top: 1.3rem; }
+.hero-actions .btn { width: auto; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.6rem; box-shadow: var(--shadow); margin-bottom: 1.5rem; min-width: 0; }
+.card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: .8rem; display: flex; align-items: center; gap: .6rem; color: var(--primary); }
+.muted { color: var(--text-muted); font-size: .95rem; }
+.lead { color: var(--text-muted); font-size: .95rem; margin-bottom: 1.1rem; }
+
+.problem-card { background: linear-gradient(135deg, rgba(239,68,68,.08), rgba(245,158,11,.08)), var(--surface); border-left: 4px solid var(--danger); }
+.solution-card { background: linear-gradient(135deg, rgba(5,150,105,.08), rgba(14,165,233,.08)), var(--surface); border-left: 4px solid var(--primary); }
+.tip-item { display: flex; gap: .8rem; margin-bottom: .8rem; padding: .8rem; background: var(--bg); border-radius: 10px; }
+.tip-icon { font-size: 1.2rem; color: var(--primary); min-width: 28px; text-align: center; }
+
+.btn { background: var(--primary); color: #fff; border: none; padding: .75rem 1.3rem; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; display: inline-flex; justify-content: center; align-items: center; gap: .5rem; transition: background .2s; font-size: .95rem; text-decoration: none; }
+.btn:hover { background: var(--primary-dark); }
+.btn:disabled { opacity: .6; cursor: progress; }
+.btn-secondary { background: var(--secondary); }
+.btn-secondary:hover { background: #0284c7; }
+.btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+.btn-outline:hover { background: var(--primary); color: #fff; }
+.btn-sm { padding: .4rem .8rem; font-size: .8rem; width: auto; }
+:focus-visible { outline: 3px solid var(--secondary); outline-offset: 2px; }
+.badge { background: rgba(5,150,105,.15); color: var(--primary); padding: .2rem .7rem; border-radius: 20px; font-size: .72rem; font-weight: 700; }
+
+.form-control { width: 100%; padding: .7rem 1rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); margin-bottom: .9rem; outline: none; font-size: .95rem; }
+.form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(5,150,105,.15); }
+
+/* AI */
+.scanner-box { border: 2px dashed var(--border); border-radius: 12px; padding: 1.8rem; text-align: center; cursor: pointer; background: rgba(5,150,105,.04); transition: all .2s; }
+.scanner-box:hover { border-color: var(--primary); background: rgba(5,150,105,.08); }
+#imagePreview { max-width: 100%; max-height: 220px; border-radius: 10px; margin-top: 1rem; display: none; }
+.ai-result { margin-top: 1rem; padding: 1rem 1.2rem; border-radius: 10px; background: rgba(14,165,233,.1); border-left: 4px solid var(--secondary); display: none; }
+.ai-result.show { display: block; }
+.loading { color: var(--text-muted); font-style: italic; text-align: center; margin-top: 1rem; }
+
+/* MAP */
+.toolbar { display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: .9rem; }
+.toolbar .btn { width: auto; }
+.status { margin-bottom: .9rem; padding: .7rem 1rem; border-radius: 10px; font-size: .9rem; display: none; }
+.status.show { display: block; }
+.status.info { background: rgba(14,165,233,.12); border-left: 4px solid var(--secondary); }
+.status.ok { background: rgba(5,150,105,.12); border-left: 4px solid var(--primary); }
+.status.err { background: rgba(239,68,68,.12); border-left: 4px solid var(--danger); }
+.status.warn { background: rgba(245,158,11,.14); border-left: 4px solid var(--accent); }
+#map { position: relative; z-index: 0; height: 540px; width: 100%; border-radius: 12px; border: 1px solid var(--border); }
+@media (max-width: 600px) { #map { height: 420px; } }
+.leaflet-popup-content { font-size: .88rem; line-height: 1.45; }
+.pop strong { display: block; margin-bottom: .2rem; }
+.pop-type { display: inline-block; background: var(--c); color: #fff; font-size: .72rem; font-weight: 700; padding: .1rem .55rem; border-radius: 20px; margin-bottom: .3rem; }
+.pop-d { color: #64748b; margin-bottom: .4rem; }
+.pop a { color: #047857; font-weight: 700; text-decoration: none; }
+.pop small { display: block; color: #94a3b8; margin-top: .3rem; }
+
+/* PINS */
+.bin-icon { background: none !important; border: none !important; }
+.pin { display: block; width: var(--s); height: var(--s); filter: drop-shadow(0 2px 3px rgba(0,0,0,.4)); flex: none; }
+.pin-in { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: var(--c); color: #fff; font-size: calc(var(--s) * .46); border: 2px solid #fff; }
+.pin-circle .pin-in { border-radius: 50%; }
+.pin-square .pin-in { border-radius: 24%; }
+.pin-diamond .pin-in { transform: rotate(45deg); border-radius: 18%; }
+.pin-diamond .pin-in i { transform: rotate(-45deg); }
+.pin-hex .pin-in { clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%); border: none; }
+.pin-tri .pin-in { clip-path: polygon(50% 3%, 99% 95%, 1% 95%); border: none; align-items: flex-end; padding-bottom: 17%; }
+.me-pin { width: 18px; height: 18px; border-radius: 50%; background: #2563eb; border: 3px solid #fff; box-shadow: 0 0 0 0 rgba(37,99,235,.6); animation: pulse 2s infinite; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 16px rgba(37,99,235,0); } 100% { box-shadow: 0 0 0 0 rgba(37,99,235,0); } }
+@media (prefers-reduced-motion: reduce) { .me-pin { animation: none; } html { scroll-behavior: auto; } }
+
+/* LEGEND */
+.legend-head { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; margin: 1.1rem 0 .6rem; }
+.legend-head h3 { font-size: 1rem; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .6rem; }
+.legend-item { display: flex; align-items: center; gap: .8rem; text-align: left; padding: .6rem .8rem; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; transition: opacity .2s, border-color .2s; min-width: 0; }
+.legend-item:hover { border-color: var(--primary); }
+.legend-item[aria-pressed="false"] { opacity: .4; }
+.legend-item .pin-wrap { width: 44px; display: flex; justify-content: center; flex: none; }
+.legend-item span.txt { flex: 1; min-width: 0; font-size: .85rem; line-height: 1.35; }
+.legend-item b { display: block; font-size: .9rem; }
+.legend-item small { color: var(--text-muted); }
+.legend-item em { font-style: normal; font-weight: 800; color: var(--primary); }
+.demo-note { margin-top: 1rem; font-size: .82rem; color: var(--text-muted); }
+
+/* LISTS */
+.near-list, .full-list { display: grid; gap: .6rem; }
+.item { display: flex; align-items: center; gap: .8rem; padding: .7rem .9rem; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; min-width: 0; }
+.item .rank { font-weight: 800; color: var(--primary); width: 1.6rem; text-align: center; flex: none; }
+.item .pin-wrap { width: 44px; display: flex; justify-content: center; flex: none; }
+.item .info { flex: 1; min-width: 0; }
+.item .info b { display: block; font-size: .93rem; overflow-wrap: anywhere; }
+.item .info small { color: var(--text-muted); }
+.item .dist { font-weight: 800; color: var(--secondary); white-space: nowrap; }
+.item .acts { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 640px) { .item { flex-wrap: wrap; } .item .acts { width: 100%; justify-content: flex-start; } }
+.dist-title { margin: 1.1rem 0 .5rem; font-size: 1rem; color: var(--primary); display: flex; gap: .5rem; align-items: baseline; }
+.dist-title small { color: var(--text-muted); font-weight: 500; }
+.list-controls { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: .7rem; margin-bottom: .4rem; }
+@media (max-width: 700px) { .list-controls { grid-template-columns: 1fr; } }
+.list-controls .form-control { margin-bottom: 0; }
+.count-line { font-size: .85rem; color: var(--text-muted); margin: .4rem 0 .2rem; }
+
+/* CALC */
+.calc-group { margin-bottom: 1.1rem; }
+.calc-group label { display: block; font-weight: 600; margin-bottom: .4rem; font-size: .9rem; }
+.calc-group input[type="range"] { width: 100%; accent-color: var(--primary); }
+.calc-result-box { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; padding: 1.4rem; border-radius: 12px; text-align: center; margin-top: 1rem; }
+.calc-result-number { font-size: 2.1rem; font-weight: 800; }
+
+/* QUIZ */
+.quiz-option { display: block; width: 100%; text-align: left; padding: .8rem 1rem; margin-bottom: .6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; transition: all .2s; font-size: .95rem; }
+.quiz-option:hover:not(:disabled) { border-color: var(--primary); background: rgba(5,150,105,.06); }
+.quiz-option.correct { border-color: var(--primary); background: rgba(5,150,105,.18); }
+.quiz-option.wrong { border-color: var(--danger); background: rgba(239,68,68,.12); }
+.quiz-option:disabled { cursor: default; }
+.quiz-q { display: block; margin-bottom: .8rem; }
+
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.stat-box { text-align: center; padding: 1rem; background: var(--bg); border-radius: 12px; }
+.stat-number { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+.stat-label { font-size: .8rem; color: var(--text-muted); }
+
+.success-msg { color: var(--primary); font-weight: 600; margin-top: .8rem; }
+footer { text-align: center; padding: 2rem 1rem; color: var(--text-muted); font-size: .9rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav-container">
+    <div class="logo"><i class="fa-solid fa-leaf"></i> EcoLoc <span class="badge" data-i18n="badge"></span></div>
+    <ul class="nav-items">
+      <li class="nav-links">
+        <a href="#problems" data-i18n="navProblems"></a>
+        <a href="#map-section" data-i18n="navMap"></a>
+        <a href="#nearby-section" data-i18n="navNearby"></a>
+        <a href="#list-section" data-i18n="navList"></a>
+        <a href="#ai-scanner" data-i18n="navAI"></a>
+        <a href="#calc-section" data-i18n="navCalc"></a>
+        <a href="#quiz-section" data-i18n="navQuiz"></a>
+        <a href="#report-section" data-i18n="navReport"></a>
+      </li>
+      <li class="nav-tools">
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button type="button" id="langRu" aria-pressed="true">RU</button>
+          <button type="button" id="langKk" aria-pressed="false">KZ</button>
+        </div>
+        <button class="icon-btn" id="themeBtn" type="button" aria-label="Theme"><i class="fa-solid fa-moon"></i></button>
+      </li>
+    </ul>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="hero">
+    <h1 data-i18n="heroTitle"></h1>
+    <p data-i18n-html="heroText"></p>
+    <div class="hero-actions">
+      <button class="btn" id="heroLocate" type="button"><i class="fa-solid fa-location-crosshairs"></i> <span data-i18n="heroBtnNear"></span></button>
+      <a class="btn btn-outline" href="#map-section"><i class="fa-solid fa-map"></i> <span data-i18n="heroBtnMap"></span></a>
+    </div>
+  </section>
+
+  <section id="problems">
+    <div class="grid-2">
+      <div class="card problem-card">
+        <div class="card-title"><i class="fa-solid fa-triangle-exclamation"></i> <span data-i18n="probTitle"></span></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-circle-question"></i></div><div><strong data-i18n="p1t"></strong><br><span data-i18n="p1d"></span></div></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-circle-question"></i></div><div><strong data-i18n="p2t"></strong><br><span data-i18n="p2d"></span></div></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-circle-question"></i></div><div><strong data-i18n="p3t"></strong><br><span data-i18n="p3d"></span></div></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-circle-question"></i></div><div><strong data-i18n="p4t"></strong><br><span data-i18n="p4d"></span></div></div>
+      </div>
+      <div class="card solution-card">
+        <div class="card-title"><i class="fa-solid fa-lightbulb"></i> <span data-i18n="solTitle"></span></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-map-location-dot"></i></div><div><strong data-i18n="s1t"></strong><br><span data-i18n="s1d"></span></div></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-location-crosshairs"></i></div><div><strong data-i18n="s2t"></strong><br><span data-i18n="s2d"></span></div></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-robot"></i></div><div><strong data-i18n="s3t"></strong><br><span data-i18n="s3d"></span></div></div>
+        <div class="tip-item"><div class="tip-icon"><i class="fa-solid fa-people-group"></i></div><div><strong data-i18n="s4t"></strong><br><span data-i18n="s4d"></span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAP -->
+  <section class="card" id="map-section">
+    <div class="card-title"><i class="fa-solid fa-map-location-dot"></i> <span data-i18n="mapTitle"></span></div>
+    <p class="lead" data-i18n="mapLead"></p>
+    <div class="toolbar">
+      <button class="btn" id="locateBtn" type="button"><i class="fa-solid fa-location-crosshairs"></i> <span data-i18n="whereAmI"></span></button>
+      <button class="btn btn-outline" id="pickBtn" type="button"><i class="fa-solid fa-hand-pointer"></i> <span data-i18n="pickBtn"></span></button>
+      <button class="btn btn-outline" id="fitBtn" type="button"><i class="fa-solid fa-expand"></i> <span data-i18n="wholeCity"></span></button>
+    </div>
+    <div id="geoStatus" class="status" role="status"></div>
+    <div id="map"></div>
+
+    <div class="legend-head">
+      <h3 data-i18n="legendTitle"></h3>
+      <button class="btn btn-outline btn-sm" id="showAllBtn" type="button" data-i18n="showAll"></button>
+    </div>
+    <div class="legend" id="legend"></div>
+    <p class="demo-note" data-i18n="demoNote"></p>
+  </section>
+
+  <!-- NEARBY -->
+  <section class="card" id="nearby-section">
+    <div class="card-title"><i class="fa-solid fa-route"></i> <span data-i18n="nearTitle"></span></div>
+    <div id="nearList" class="near-list"></div>
+  </section>
+
+  <!-- FULL LIST -->
+  <section class="card" id="list-section">
+    <div class="card-title"><i class="fa-solid fa-list-ul"></i> <span data-i18n="listTitle"></span></div>
+    <p class="lead" data-i18n="listLead"></p>
+    <div class="list-controls">
+      <input type="search" class="form-control" id="listSearch" data-i18n-ph="searchPh">
+      <select class="form-control" id="listDistrict"></select>
+      <select class="form-control" id="listSort"></select>
+    </div>
+    <div class="count-line" id="listCount"></div>
+    <div id="fullList"></div>
+  </section>
+
+  <!-- AI -->
+  <section class="card" id="ai-scanner">
+    <div class="card-title"><i class="fa-solid fa-robot"></i> <span data-i18n="aiTitle"></span></div>
+    <p class="lead" data-i18n="aiLead"></p>
+    <div class="scanner-box" id="dropZone" role="button" tabindex="0">
+      <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.8rem;color:var(--primary)"></i>
+      <p style="margin-top:.6rem;font-weight:600" data-i18n="aiDrop"></p>
+      <p class="muted" style="font-size:.85rem;margin-top:.3rem" data-i18n="aiFormats"></p>
+      <input type="file" id="imageUpload" accept="image/*" class="hidden">
+    </div>
+    <img id="imagePreview" alt="">
+    <div id="aiResult" class="ai-result"></div>
+    <div id="aiLoading" class="loading hidden"></div>
+  </section>
+
+  <!-- CALC -->
+  <section class="card" id="calc-section">
+    <div class="card-title"><i class="fa-solid fa-calculator"></i> <span data-i18n="calcTitle"></span></div>
+    <p class="lead" data-i18n="calcLead"></p>
+    <div class="calc-group"><label for="plastic"><span data-i18n="calcQ1"></span> <b id="plasticVal">5</b></label><input type="range" id="plastic" min="0" max="30" value="5"></div>
+    <div class="calc-group"><label for="sort"><span data-i18n="calcQ2"></span> <b id="sortVal">1</b></label><input type="range" id="sort" min="0" max="7" value="1"></div>
+    <div class="calc-group"><label for="paper"><span data-i18n="calcQ3"></span> <b id="paperVal">2</b></label><input type="range" id="paper" min="0" max="20" value="2"></div>
+    <div class="calc-group"><label for="transport"><span data-i18n="calcQ4"></span> <b id="transportVal"></b></label><input type="range" id="transport" min="0" max="2" value="1"></div>
+    <div class="calc-result-box">
+      <div data-i18n="calcRes"></div>
+      <div class="calc-result-number" id="co2Result"></div>
+      <div style="font-size:.95rem;opacity:.9" id="wasteResult"></div>
+    </div>
+    <p class="demo-note" data-i18n="calcNote"></p>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="card" id="quiz-section">
+    <div class="card-title"><i class="fa-solid fa-graduation-cap"></i> <span data-i18n="quizTitle"></span></div>
+    <div id="quizBox"></div>
+  </section>
+
+  <!-- REPORT -->
+  <section class="card" id="report-section">
+    <div class="card-title"><i class="fa-solid fa-bullhorn"></i> <span data-i18n="repTitle"></span></div>
+    <p class="lead" data-i18n="repLead"></p>
+    <form id="reportForm">
+      <select class="form-control" id="reportDistrict" required></select>
+      <input type="text" class="form-control" id="reportAddress" data-i18n-ph="repAddr" required>
+      <select class="form-control" id="reportType" required></select>
+      <textarea class="form-control" id="reportDesc" rows="3" data-i18n-ph="repDesc"></textarea>
+      <button type="submit" class="btn"><i class="fa-solid fa-paper-plane"></i> <span data-i18n="repSend"></span></button>
+    </form>
+    <div id="reportSuccess" class="success-msg hidden"></div>
+  </section>
+
+  <!-- STATS -->
+  <section class="card">
+    <div class="card-title"><i class="fa-solid fa-chart-pie"></i> <span data-i18n="statsTitle"></span></div>
+    <div class="stats-grid" id="statsGrid"></div>
+  </section>
+
+</main>
+
+<footer>
+  <p><strong>EcoLoc</strong> <span data-i18n="footer1"></span></p>
+  <p style="margin-top:.4rem" data-i18n="footer2"></p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* ================= HELPERS ================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+
+/* ================= I18N ================= */
+const I18N = {
+ru: {
+  badge: 'AI платформа',
+  navProblems: 'Проблемы', navMap: 'Карта', navNearby: 'Ближайшие', navList: 'Все баки', navAI: 'AI-сортировщик', navCalc: 'Калькулятор', navQuiz: 'Тест', navReport: 'Сообщить',
+  heroTitle: 'Сортировка отходов в Алматы: где выбросить и что куда',
+  heroText: 'Многие жители Алматы не знают, как правильно сортировать мусор и где находятся ближайшие баки, контейнерные площадки и пункты приёма вторсырья. <strong>EcoLoc</strong> собирает всё в одном месте: карта города, поиск ближайшего бака и AI-помощник по сортировке.',
+  heroBtnNear: 'Найти ближайший бак', heroBtnMap: 'Открыть карту',
+  probTitle: 'Основные трудности',
+  p1t: 'Нет понятной информации', p1d: 'Жители не знают, где стоит ближайший контейнер или пункт приёма.',
+  p2t: 'Неясные правила сортировки', p2d: 'Пластик, бумага, стекло, органика: что куда класть, знают не все.',
+  p3t: 'Неравномерная инфраструктура', p3d: 'В одних районах контейнеров много, в других почти нет.',
+  p4t: 'Низкая экокультура', p4d: 'В школах и во дворах не хватает системного экологического воспитания.',
+  solTitle: 'Как помогает EcoLoc',
+  s1t: 'Карта Алматы', s1d: 'Баки и площадки по всем районам: от больших дворовых контейнеров до маленьких урн в парках.',
+  s2t: 'Ближайшие к вам', s2d: 'Нажмите «Где я», и сайт построит список ближайших баков с расстоянием.',
+  s3t: 'AI-сортировщик', s3d: 'Загрузите фото предмета, и нейросеть подскажет, куда его выбросить.',
+  s4t: 'Сообщения от жителей', s4d: 'Сообщайте о переполненных баках и местах, где контейнеров не хватает.',
+  mapTitle: 'Эко-карта Алматы',
+  mapLead: 'Баки и площадки по всем районам города. Нажмите на значок, чтобы увидеть описание и построить маршрут. Нажмите на пункт легенды под картой, чтобы скрыть или показать этот тип.',
+  mapMissing: 'Карта не загрузилась: в окне предпросмотра внешние библиотеки заблокированы. Скачайте файл и откройте его в браузере с интернетом.',
+  whereAmI: 'Где я', wholeCity: 'Весь город',
+  legendTitle: 'Обозначения на карте', showAll: 'Показать все типы',
+  demoNote: 'Расположение точек ориентировочное: это стартовая демо-база по районам города. Реальные баки и пункты можно уточнять через форму «Сообщить».',
+  geoWaiting: 'Определяем ваше местоположение… Разрешите доступ в окне браузера.',
+  geoUnsupported: 'Ваш браузер не поддерживает определение местоположения.',
+  geoDenied: 'Доступ к местоположению запрещён. Нажмите на карте там, где вы находитесь, или разрешите доступ в настройках браузера и нажмите «Где я» снова.',
+  geoUnavailable: 'Не удалось определить местоположение. Нажмите на карте там, где вы находитесь, и сайт построит список ближайших баков.',
+  geoTimeout: 'Браузер не смог определить местоположение. Нажмите на карте там, где вы находитесь, и сайт построит список ближайших баков.',
+  pickBtn: 'Указать на карте', pickHint: 'Нажмите на карте там, где вы находитесь.',
+  geoManualOk: 'Точка выбрана. Ближайшие баки показаны на карте и в списке ниже.',
+  geoInsecure: 'Определение местоположения работает только на сайте с https (или с localhost). Откройте сайт по https-ссылке.',
+  geoOk: 'Местоположение определено. Ближайшие баки показаны на карте и в списке ниже.',
+  geoFar: 'Вы находитесь за пределами Алматы. Показаны ближайшие точки города.',
+  nearTitle: 'Ближайшие к вам баки', nearEmpty: 'Нажмите «Где я» над картой. Сайт запросит местоположение и покажет ближайшие баки по расстоянию.',
+  noTypes: 'Все типы скрыты. Включите хотя бы один в легенде под картой.',
+  listTitle: 'Все баки и площадки города', listLead: 'Полный список по районам. Используйте поиск или выберите район.',
+  searchPh: 'Поиск по названию…', allDistricts: 'Все районы', sortDistrict: 'Сортировка: по районам', sortName: 'Сортировка: по названию', sortDistance: 'Сортировка: по расстоянию (нужно «Где я»)',
+  shown: 'Показано', of: 'из', nothing: 'Ничего не найдено.',
+  onMap: 'На карте', route: 'Маршрут', approx: 'Координаты ориентировочные', distSuffix: 'район',
+  aiTitle: 'AI-сортировщик', aiLead: 'Загрузите фото мусора или предмета. Нейросеть TensorFlow.js распознает его и подскажет, в какой бак его выбросить. Всё считается прямо в вашем браузере.',
+  aiDrop: 'Выберите фото или перетащите его сюда', aiFormats: 'JPG, PNG',
+  aiLoading: 'ИИ анализирует…', aiModel: 'Модель ещё загружается…', aiError: 'Не удалось распознать. Попробуйте другое фото или проверьте интернет.',
+  aiConf: 'Уверенность', aiSeen: 'Распознано', aiLow: 'ИИ не уверен в результате. Проверьте предмет сами по подсказке ниже.',
+  aiDisclaimer: 'Модель распознаёт общие предметы и может ошибаться. Если сомневаетесь, смотрите правила сортировки.',
+  aiShow: 'Показать подходящие точки на карте',
+  g_plastic: 'Пластик', g_plastic_t: 'Опустошите, сполоснуйте и сплющьте. Положите в контейнер для пластика. Сильно загрязнённый пластик отправляйте в обычный бак.',
+  g_paper: 'Бумага и картон', g_paper_t: 'Кладите в контейнер для бумаги. Жирную и мокрую бумагу (например, коробку из-под пиццы) сдавать нельзя.',
+  g_glass: 'Стекло', g_glass_t: 'Кладите в контейнер для стекла. Зеркала, оконное стекло и посуду из фарфора сдавайте отдельно: они перерабатываются иначе.',
+  g_metal: 'Металл', g_metal_t: 'Сдайте в пункт приёма вторсырья или в контейнер для металла. Банки сполосните и сплющьте.',
+  g_organic: 'Органика', g_organic_t: 'Пищевые остатки кладите в бак для органики или в компост. Если отдельного бака нет, выбрасывайте в обычный контейнер.',
+  g_special: 'Опасные отходы / электроника', g_special_t: 'Не выбрасывайте в обычный бак. Отнесите в пункт приёма батареек, ламп и электроники.',
+  g_other: 'Смешанные отходы', g_other_t: 'Скорее всего, это обычный мусор: выбросьте в общий контейнер. Если предмет крупный или необычный, уточните, где его принимают.',
+  calcTitle: 'Личный эко-калькулятор', calcLead: 'Оцените свои привычки. Сайт приблизительно считает годовой выброс CO₂ и объём несортированных отходов.',
+  calcQ1: 'Сколько пластиковых пакетов вы используете в неделю?', calcQ2: 'Сколько раз в неделю вы сортируете мусор?', calcQ3: 'Сколько кг бумаги и картона вы сдаёте в месяц?', calcQ4: 'Как часто вы ездите на автобусе и метро?',
+  transport: ['Редко', 'Иногда', 'Часто'],
+  calcRes: 'Ваша примерная годовая оценка', calcCO2: 'кг CO₂', calcWaste: 'и ~{n} кг несортированных отходов',
+  calcNote: 'Это учебная оценка по упрощённой формуле, а не научный расчёт.',
+  quizTitle: 'Проверьте знания по сортировке', quizQ: 'Вопрос', quizNext: 'Дальше', quizAgain: 'Пройти ещё раз', quizResult: 'Результат',
+  quizGreat: 'Отлично! Вы хорошо разбираетесь в сортировке.', quizGood: 'Хороший результат. Повторите несколько правил.', quizLow: 'Стоит повторить правила. AI-сортировщик поможет.',
+  repTitle: 'Сообщить о проблеме', repLead: 'Нет контейнера, бак переполнен или вы знаете новое место приёма? Напишите нам.',
+  repDistrict: 'Выберите район', repAddr: 'Адрес или ориентир', repDesc: 'Описание (необязательно)', repType: 'Тип проблемы',
+  rt_missing: 'Нет контейнера', rt_full: 'Бак переполнен', rt_dirty: 'Площадка грязная / не обслуживается', rt_new: 'Предложить новый пункт приёма', rt_other: 'Другое',
+  repSend: 'Отправить', repOk: 'Спасибо! Сообщение сохранено на этом устройстве.',
+  statsTitle: 'Что есть на карте', stPoints: 'точек на карте', stDistricts: 'района города', stTypes: 'типов баков', stSorting: 'мест раздельного сбора и приёма вторсырья',
+  footer1: '— открытая платформа экологической культуры Алматы', footer2: 'Вместе справимся с проблемой сортировки отходов • 2026'
+},
+kk: {
+  badge: 'AI платформасы',
+  navProblems: 'Мәселелер', navMap: 'Карта', navNearby: 'Ең жақын', navList: 'Барлық контейнер', navAI: 'AI-сұрыптаушы', navCalc: 'Калькулятор', navQuiz: 'Тест', navReport: 'Хабарлау',
+  heroTitle: 'Алматыдағы қалдықтарды сұрыптау: нені қайда тастау керек',
+  heroText: 'Алматының көптеген тұрғындары қоқысты қалай дұрыс сұрыптау керектігін және ең жақын контейнерлер мен қайта өңдеу пункттерінің қайда екенін білмейді. <strong>EcoLoc</strong> бәрін бір жерге жинайды: қала картасы, ең жақын контейнерді іздеу және сұрыптау бойынша AI-көмекші.',
+  heroBtnNear: 'Ең жақын контейнерді табу', heroBtnMap: 'Картаны ашу',
+  probTitle: 'Негізгі қиындықтар',
+  p1t: 'Түсінікті ақпарат жоқ', p1d: 'Тұрғындар ең жақын контейнер немесе қабылдау пункті қайда екенін білмейді.',
+  p2t: 'Сұрыптау ережелері түсініксіз', p2d: 'Пластик, қағаз, шыны, органика: нені қайда салу керек, бәрі біле бермейді.',
+  p3t: 'Инфрақұрылым біркелкі емес', p3d: 'Кейбір аудандарда контейнер көп, кейбірінде өте аз.',
+  p4t: 'Экомәдениет төмен', p4d: 'Мектептерде және аулаларда жүйелі экологиялық тәрбие жетіспейді.',
+  solTitle: 'EcoLoc қалай көмектеседі',
+  s1t: 'Алматы картасы', s1d: 'Барлық аудандардағы контейнерлер мен алаңдар: үлкен аула контейнерлерінен саябақтағы шағын урналарға дейін.',
+  s2t: 'Сізге ең жақындары', s2d: '«Мен қайдамын» батырмасын басыңыз, сайт қашықтығымен ең жақын контейнерлер тізімін құрады.',
+  s3t: 'AI-сұрыптаушы', s3d: 'Заттың суретін жүктеңіз, нейрожелі оны қайда тастау керегін айтады.',
+  s4t: 'Тұрғындардан хабарлама', s4d: 'Толып кеткен контейнерлер мен контейнер жетіспейтін жерлер туралы хабарлаңыз.',
+  mapTitle: 'Алматының эко-картасы',
+  mapLead: 'Қаланың барлық аудандарындағы контейнерлер мен алаңдар. Сипаттаманы көру және маршрут салу үшін белгіні басыңыз. Картаның астындағы шартты белгіні басып, осы түрді жасыруға немесе көрсетуге болады.',
+  mapMissing: 'Карта жүктелмеді: алдын ала қарау терезесінде сыртқы кітапханалар бұғатталған. Файлды жүктеп алып, интернеті бар браузерде ашыңыз.',
+  whereAmI: 'Мен қайдамын', wholeCity: 'Бүкіл қала',
+  legendTitle: 'Картадағы белгілер', showAll: 'Барлық түрді көрсету',
+  demoNote: 'Нүктелердің орны шамамен берілген: бұл қала аудандары бойынша бастапқы демо-база. Нақты контейнерлер мен пункттерді «Хабарлау» формасы арқылы нақтылауға болады.',
+  geoWaiting: 'Орналасқан жеріңіз анықталуда… Браузер терезесінде рұқсат беріңіз.',
+  geoUnsupported: 'Браузеріңіз орналасқан жерді анықтауды қолдамайды.',
+  geoDenied: 'Орналасқан жерге рұқсат берілмеген. Картада өзіңіз тұрған жерді басыңыз немесе браузер баптауларында рұқсат беріп, «Мен қайдамын» батырмасын қайта басыңыз.',
+  geoUnavailable: 'Орналасқан жерді анықтау мүмкін болмады. Картада өзіңіз тұрған жерді басыңыз, сайт ең жақын контейнерлер тізімін құрады.',
+  geoTimeout: 'Браузер орналасқан жерді анықтай алмады. Картада өзіңіз тұрған жерді басыңыз, сайт ең жақын контейнерлер тізімін құрады.',
+  pickBtn: 'Картада көрсету', pickHint: 'Картада өзіңіз тұрған жерді басыңыз.',
+  geoManualOk: 'Нүкте таңдалды. Ең жақын контейнерлер картада және төмендегі тізімде көрсетілді.',
+  geoInsecure: 'Орналасқан жерді анықтау тек https (немесе localhost) сайттарында жұмыс істейді. Сайтты https сілтемесімен ашыңыз.',
+  geoOk: 'Орналасқан жеріңіз анықталды. Ең жақын контейнерлер картада және төмендегі тізімде көрсетілді.',
+  geoFar: 'Сіз Алматыдан тыс жердесіз. Қаладағы ең жақын нүктелер көрсетілді.',
+  nearTitle: 'Сізге ең жақын контейнерлер', nearEmpty: 'Картаның үстіндегі «Мен қайдамын» батырмасын басыңыз. Сайт орналасқан жерді сұрап, ең жақын контейнерлерді қашықтығы бойынша көрсетеді.',
+  noTypes: 'Барлық түр жасырылған. Картаның астындағы шартты белгіден кемінде біреуін қосыңыз.',
+  listTitle: 'Қаладағы барлық контейнер мен алаң', listLead: 'Аудандар бойынша толық тізім. Іздеуді қолданыңыз немесе ауданды таңдаңыз.',
+  searchPh: 'Атауы бойынша іздеу…', allDistricts: 'Барлық аудан', sortDistrict: 'Сұрыптау: аудандар бойынша', sortName: 'Сұрыптау: атауы бойынша', sortDistance: 'Сұрыптау: қашықтық бойынша («Мен қайдамын» керек)',
+  shown: 'Көрсетілді', of: '/', nothing: 'Ештеңе табылмады.',
+  onMap: 'Картада', route: 'Маршрут', approx: 'Координаттар шамамен берілген', distSuffix: 'ауданы',
+  aiTitle: 'AI-сұрыптаушы', aiLead: 'Қоқыстың немесе заттың суретін жүктеңіз. TensorFlow.js нейрожелісі оны таниды және қай контейнерге тастау керегін айтады. Барлығы браузеріңізде есептеледі.',
+  aiDrop: 'Суретті таңдаңыз немесе осында сүйреңіз', aiFormats: 'JPG, PNG',
+  aiLoading: 'AI талдап жатыр…', aiModel: 'Модель әлі жүктелуде…', aiError: 'Тану мүмкін болмады. Басқа сурет көріңіз немесе интернетті тексеріңіз.',
+  aiConf: 'Сенімділік', aiSeen: 'Танылды', aiLow: 'AI нәтижеге сенімді емес. Заттың түрін төмендегі кеңес бойынша өзіңіз тексеріңіз.',
+  aiDisclaimer: 'Модель жалпы заттарды таниды және қателесуі мүмкін. Күмән болса, сұрыптау ережелерін қараңыз.',
+  aiShow: 'Қолайлы нүктелерді картада көрсету',
+  g_plastic: 'Пластик', g_plastic_t: 'Босатыңыз, шайыңыз және жаншыңыз. Пластикке арналған контейнерге салыңыз. Қатты ластанған пластикті кәдімгі контейнерге тастаңыз.',
+  g_paper: 'Қағаз және картон', g_paper_t: 'Қағазға арналған контейнерге салыңыз. Майлы және дымқыл қағазды (мысалы, пицца қорабын) өткізуге болмайды.',
+  g_glass: 'Шыны', g_glass_t: 'Шыныға арналған контейнерге салыңыз. Айна, терезе шынысы және фарфор ыдыстарды бөлек өткізіңіз: олар басқаша өңделеді.',
+  g_metal: 'Металл', g_metal_t: 'Қайта өңдеу қабылдау пунктіне немесе металл контейнеріне өткізіңіз. Банкаларды шайып, жаншыңыз.',
+  g_organic: 'Органика', g_organic_t: 'Тағам қалдықтарын органика контейнеріне немесе компостқа салыңыз. Бөлек контейнер болмаса, кәдімгі контейнерге тастаңыз.',
+  g_special: 'Қауіпті қалдықтар / электроника', g_special_t: 'Кәдімгі контейнерге тастамаңыз. Батарейка, лампа және электроника қабылдайтын пунктке апарыңыз.',
+  g_other: 'Аралас қалдықтар', g_other_t: 'Бұл, ықтимал, кәдімгі қоқыс: жалпы контейнерге тастаңыз. Зат ірі немесе ерекше болса, оны қайда қабылдайтынын нақтылаңыз.',
+  calcTitle: 'Жеке эко-калькулятор', calcLead: 'Әдеттеріңізді бағалаңыз. Сайт жылдық CO₂ шығарындысын және сұрыпталмаған қалдық көлемін шамамен есептейді.',
+  calcQ1: 'Аптасына қанша пластик пакет қолданасыз?', calcQ2: 'Аптасына неше рет қоқысты сұрыптайсыз?', calcQ3: 'Айына неше кг қағаз бен картон өткізесіз?', calcQ4: 'Автобус пен метроны қаншалықты жиі қолданасыз?',
+  transport: ['Сирек', 'Кейде', 'Жиі'],
+  calcRes: 'Жылдық шамамен бағаңыз', calcCO2: 'кг CO₂', calcWaste: 'және ~{n} кг сұрыпталмаған қалдық',
+  calcNote: 'Бұл жеңілдетілген формула бойынша оқу бағасы, ғылыми есеп емес.',
+  quizTitle: 'Сұрыптау білімін тексеру', quizQ: 'Сұрақ', quizNext: 'Келесі', quizAgain: 'Қайта өту', quizResult: 'Нәтиже',
+  quizGreat: 'Тамаша! Сіз сұрыптауды жақсы білесіз.', quizGood: 'Жақсы нәтиже. Бірнеше ережені қайталаңыз.', quizLow: 'Ережелерді қайталаған жөн. AI-сұрыптаушы көмектеседі.',
+  repTitle: 'Мәселе туралы хабарлау', repLead: 'Контейнер жоқ па, толып кетті ме немесе жаңа қабылдау пунктін білесіз бе? Бізге жазыңыз.',
+  repDistrict: 'Ауданды таңдаңыз', repAddr: 'Мекенжай немесе бағдар', repDesc: 'Сипаттама (міндетті емес)', repType: 'Мәселе түрі',
+  rt_missing: 'Контейнер жоқ', rt_full: 'Контейнер толып кеткен', rt_dirty: 'Алаң лас / қызмет көрсетілмейді', rt_new: 'Жаңа қабылдау пунктін ұсыну', rt_other: 'Басқа',
+  repSend: 'Жіберу', repOk: 'Рахмет! Хабарлама осы құрылғыда сақталды.',
+  statsTitle: 'Картада не бар', stPoints: 'нүкте картада', stDistricts: 'қала ауданы', stTypes: 'контейнер түрі', stSorting: 'бөлек жинау және қабылдау орны',
+  footer1: '— Алматының экологиялық мәдениетін дамытуға арналған ашық платформа', footer2: 'Қалдықты сұрыптау мәселесін бірге шешейік • 2026'
+}
+};
+
+let lang = (store('ecoloc_lang') === 'kk') ? 'kk' : 'ru';
+const t = k => (I18N[lang][k] !== undefined ? I18N[lang][k] : (I18N.ru[k] !== undefined ? I18N.ru[k] : k));
+
+/* ================= DATA ================= */
+const DISTRICTS = {
+  A: { ru: 'Алатауский', kk: 'Алатау' },
+  L: { ru: 'Алмалинский', kk: 'Әлмалы' },
+  U: { ru: 'Ауэзовский', kk: 'Әуезов' },
+  B: { ru: 'Бостандыкский', kk: 'Бостандық' },
+  Z: { ru: 'Жетысуский', kk: 'Жетісу' },
+  M: { ru: 'Медеуский', kk: 'Медеу' },
+  N: { ru: 'Наурызбайский', kk: 'Наурызбай' },
+  T: { ru: 'Турксибский', kk: 'Түрксіб' }
+};
+const districtLabel = k => DISTRICTS[k][lang] + ' ' + t('distSuffix');
+
+// shape / size / color / icon differ per type so bins can be told apart on the map
+const TYPES = {
+  z: { color: '#059669', icon: 'fa-recycle',               shape: 'circle',  size: 40,
+       ru: { name: 'Контейнерная площадка / эко-зона', desc: 'Огороженная зона с несколькими большими баками, часто с раздельным сбором' },
+       kk: { name: 'Контейнер алаңы / эко-аймақ',      desc: 'Бірнеше үлкен контейнері бар қоршалған алаң, көбіне бөлек жинаумен' } },
+  y: { color: '#475569', icon: 'fa-dumpster',              shape: 'square',  size: 32,
+       ru: { name: 'Дворовые баки', desc: 'Большие контейнеры у жилых домов' },
+       kk: { name: 'Аула контейнерлері', desc: 'Тұрғын үйлер жанындағы үлкен контейнерлер' } },
+  p: { color: '#f59e0b', icon: 'fa-trash-can',             shape: 'circle',  size: 24,
+       ru: { name: 'Малые урны в парках', desc: 'Маленькие урны на аллеях, в парках и скверах' },
+       kk: { name: 'Саябақтағы шағын урналар', desc: 'Аллеялардағы, саябақ пен скверлердегі шағын урналар' } },
+  s: { color: '#0ea5e9', icon: 'fa-layer-group',           shape: 'diamond', size: 26,
+       ru: { name: 'Раздельный сбор', desc: 'Цветные контейнеры для пластика, бумаги и стекла' },
+       kk: { name: 'Бөлек жинау', desc: 'Пластик, қағаз және шыныға арналған түрлі-түсті контейнерлер' } },
+  r: { color: '#8b5cf6', icon: 'fa-boxes-packing',         shape: 'hex',     size: 38,
+       ru: { name: 'Приём вторсырья', desc: 'Пункт, куда сдают макулатуру, пластик, стекло и металл' },
+       kk: { name: 'Қайта өңдеу пункті', desc: 'Макулатура, пластик, шыны және металл қабылданатын пункт' } },
+  h: { color: '#ef4444', icon: 'fa-triangle-exclamation',  shape: 'tri',     size: 36,
+       ru: { name: 'Опасные отходы', desc: 'Батарейки, ртутные лампы, мелкая электроника' },
+       kk: { name: 'Қауіпті қалдықтар', desc: 'Батарейка, сынапты лампа, ұсақ электроника' } }
+};
+const TYPE_KEYS = Object.keys(TYPES);
+
+// [lat, lng, type, district, name RU, name KK]  (coordinates are approximate demo data)
+const RAW = [
+  // Алатауский
+  [43.2960,76.8250,'y','A','мкр Алгабас — дворовые баки','Алғабас ш/а — аула контейнерлері'],
+  [43.3262,76.8330,'y','A','мкр Акбулак — дворовые баки','Ақбұлақ ш/а — аула контейнерлері'],
+  [43.3075,76.8580,'s','A','мкр Жас Канат — раздельный сбор','Жас Қанат ш/а — бөлек жинау'],
+  [43.3150,76.8430,'r','A','Рынок «Алтын Орда» — приём вторсырья','«Алтын Орда» базары — қайта өңдеу пункті'],
+  [43.3020,76.8700,'p','A','Сквер в мкр Алгабас — малые урны','Алғабас скверi — шағын урналар'],
+  [43.3200,76.8560,'z','A','мкр Жас Канат — контейнерная площадка','Жас Қанат ш/а — контейнер алаңы'],
+  // Ауэзовский
+  [43.2335,76.8190,'y','U','мкр Аксай-4 — дворовые баки','Ақсай-4 ш/а — аула контейнерлері'],
+  [43.2380,76.8350,'z','U','мкр Аксай-1 — контейнерная площадка','Ақсай-1 ш/а — контейнер алаңы'],
+  [43.2520,76.8520,'p','U','Сквер мкр Мамыр — малые урны','Мамыр ш/а скверi — шағын урналар'],
+  [43.2290,76.8650,'s','U','ул. Саина — раздельный сбор','Сайын к-сі — бөлек жинау'],
+  [43.2205,76.8730,'h','U','ул. Саина — приём батареек и ламп','Сайын к-сі — батарейка мен лампа қабылдау'],
+  [43.2600,76.8650,'y','U','мкр Таугуль — дворовые баки','Таугүл ш/а — аула контейнерлері'],
+  [43.2440,76.8600,'z','U','мкр Мамыр-4 — контейнерная площадка','Мамыр-4 ш/а — контейнер алаңы'],
+  // Бостандыкский
+  [43.2185,76.9275,'p','B','Есентай парк — малые урны','Есентай парк — шағын урналар'],
+  [43.2215,76.9125,'z','B','КазНУ им. аль-Фараби — контейнерная площадка','әл-Фараби атындағы ҚазҰУ — контейнер алаңы'],
+  [43.2150,76.9195,'p','B','Ботанический сад — урны вдоль аллей','Ботаникалық бақ — аллея бойындағы урналар'],
+  [43.2140,76.9060,'p','B','Парк Первого Президента — урны','Тұңғыш Президент паркі — урналар'],
+  [43.2005,76.8930,'r','B','Район ТРЦ Мега — приём вторсырья','Мега ТРЦ маңы — қайта өңдеу пункті'],
+  [43.2185,76.8643,'y','B','мкр Орбита — дворовые баки','Орбита ш/а — аула контейнерлері'],
+  [43.2260,76.9020,'s','B','пр. аль-Фараби — раздельный сбор','әл-Фараби даңғылы — бөлек жинау'],
+  [43.2275,76.9695,'y','B','мкр Горный Гигант — дворовые баки','Горный Гигант ш/а — аула контейнерлері'],
+  [43.2395,76.8440,'p','B','Озеро Сайран — малые урны','Сайран көлі — шағын урналар'],
+  [43.2370,76.8890,'z','B','ул. Жандосова — контейнерная площадка','Жандосов к-сі — контейнер алаңы'],
+  [43.2270,76.8870,'s','B','ул. Навои — раздельный сбор','Науаи к-сі — бөлек жинау'],
+  // Алмалинский
+  [43.2380,76.9454,'z','L','пл. Республики — контейнерная площадка','Республика алаңы — контейнер алаңы'],
+  [43.2392,76.9448,'p','L','пл. Республики — малые урны','Республика алаңы — шағын урналар'],
+  [43.2593,76.9553,'p','L','Парк 28 гвардейцев-панфиловцев — урны','28 гвардияшы-панфиловшылар паркі — урналар'],
+  [43.2600,76.9475,'z','L','Зелёный базар — контейнерная площадка','Жасыл базар — контейнер алаңы'],
+  [43.2560,76.9320,'s','L','ул. Толе би — раздельный сбор','Төле би к-сі — бөлек жинау'],
+  [43.2345,76.8545,'z','L','Автовокзал «Сайран» — контейнерная площадка','«Сайран» автовокзалы — контейнер алаңы'],
+  [43.2650,76.9420,'y','L','ул. Жибек Жолы — дворовые баки','Жібек Жолы к-сі — аула контейнерлері'],
+  [43.2540,76.9165,'h','L','Центр — приём батареек и ламп','Орталық — батарейка мен лампа қабылдау'],
+  [43.2400,76.9120,'s','L','пр. Абая — раздельный сбор','Абай даңғылы — бөлек жинау'],
+  // Жетысуский
+  [43.2722,76.9420,'z','Z','ЖД вокзал «Алматы-2» — контейнерная площадка','«Алматы-2» т/ж вокзалы — контейнер алаңы'],
+  [43.2735,76.9440,'r','Z','ЖД вокзал «Алматы-2» — приём вторсырья','«Алматы-2» т/ж вокзалы — қайта өңдеу пункті'],
+  [43.2840,76.9360,'y','Z','ул. Райымбека — дворовые баки','Райымбек к-сі — аула контейнерлері'],
+  [43.2790,76.9680,'s','Z','пр. Суюнбая — раздельный сбор','Сүйінбай даңғылы — бөлек жинау'],
+  [43.2855,76.9110,'p','Z','Сквер у ул. Райымбека — малые урны','Райымбек к-сі скверi — шағын урналар'],
+  // Турксибский
+  [43.3418,76.9460,'z','T','ЖД вокзал «Алматы-1» — контейнерная площадка','«Алматы-1» т/ж вокзалы — контейнер алаңы'],
+  [43.3380,76.9440,'r','T','ЖД вокзал «Алматы-1» — приём вторсырья','«Алматы-1» т/ж вокзалы — қайта өңдеу пункті'],
+  [43.3521,77.0405,'z','T','Аэропорт Алматы — контейнерная площадка','Алматы әуежайы — контейнер алаңы'],
+  [43.3250,76.9950,'y','T','мкр Кайрат — дворовые баки','Қайрат ш/а — аула контейнерлері'],
+  [43.3250,76.9400,'p','T','Сквер в Турксибском районе — малые урны','Түрксіб ауданы скверi — шағын урналар'],
+  [43.3330,76.9560,'h','T','Турксиб — приём батареек и ламп','Түрксіб — батарейка мен лампа қабылдау'],
+  // Медеуский
+  [43.1577,77.0583,'p','M','Урочище Медеу — малые урны','Медеу шатқалы — шағын урналар'],
+  [43.1297,77.0820,'z','M','Шымбулак (нижняя станция) — контейнерная площадка','Шымбұлақ (төменгі станция) — контейнер алаңы'],
+  [43.0510,76.9930,'p','M','Большое Алматинское озеро — урны','Үлкен Алматы көлі — урналар'],
+  [43.2328,76.9742,'p','M','Кок-Тобе — урны на смотровой','Көктөбе — шолу алаңындағы урналар'],
+  [43.2360,76.9590,'p','M','ЦПКиО (парк им. Горького) — малые урны','ОМДО (Горький паркі) — шағын урналар'],
+  [43.2375,76.9575,'z','M','ЦПКиО — контейнерная площадка у входа','ОМДО — кіре беріс жанындағы контейнер алаңы'],
+  [43.2350,76.9610,'s','M','ЦПКиО — раздельный сбор','ОМДО — бөлек жинау'],
+  [43.2335,76.9565,'z','M','Район Достык Плаза — контейнерная площадка','Достық Плаза маңы — контейнер алаңы'],
+  [43.2300,76.9510,'y','M','мкр Самал-2 — дворовые баки','Самал-2 ш/а — аула контейнерлері'],
+  [43.2290,76.9600,'h','M','Район Самал — приём батареек и ламп','Самал маңы — батарейка мен лампа қабылдау'],
+  // Наурызбайский
+  [43.2150,76.8050,'y','N','мкр Шугыла — дворовые баки','Шұғыла ш/а — аула контейнерлері'],
+  [43.2065,76.8020,'z','N','мкр Калкаман — контейнерная площадка','Қалқаман ш/а — контейнер алаңы'],
+  [43.1850,76.8130,'s','N','мкр Каргалы — раздельный сбор','Қарғалы ш/а — бөлек жинау'],
+  [43.2250,76.7890,'p','N','Сквер мкр Шугыла — малые урны','Шұғыла ш/а скверi — шағын урналар'],
+  [43.2300,76.8150,'r','N','Наурызбайский район — приём вторсырья','Наурызбай ауданы — қайта өңдеу пункті']
+];
+const POINTS = RAW.map((r, i) => ({ i, lat: r[0], lng: r[1], type: r[2], dist: r[3], ru: r[4], kk: r[5] }));
+
+/* ================= THEME / LANG ================= */
+const htmlEl = document.documentElement;
+const themeBtn = $('themeBtn');
+function setTheme(th) {
+  htmlEl.setAttribute('data-theme', th);
+  themeBtn.innerHTML = th === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+  store('ecoloc_theme', th);
+  try { applyTiles(); } catch (e) { /* map not created yet */ }
+}
+setTheme(store('ecoloc_theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+themeBtn.addEventListener('click', () => setTheme(htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+/* ================= PINS ================= */
+function pinHTML(type) {
+  const T = TYPES[type];
+  return '<span class="pin pin-' + T.shape + '" style="--c:' + T.color + ';--s:' + T.size + 'px"><span class="pin-in"><i class="fa-solid ' + T.icon + '"></i></span></span>';
+}
+function makeIcon(type) {
+  const s = TYPES[type].size;
+  return L.divIcon({ className: 'bin-icon', html: pinHTML(type), iconSize: [s, s], iconAnchor: [s / 2, s / 2], popupAnchor: [0, -s / 2] });
+}
+
+/* ================= MAP ================= */
+// If Leaflet could not load (blocked preview, offline), keep the rest of the page working.
+let MAP_MISSING = false;
+if (typeof L === 'undefined') {
+  MAP_MISSING = true;
+  const noop = new Proxy(function () {}, {
+    get: (tg, p) => (p === 'hasLayer' ? () => false : p === 'then' ? undefined : noop),
+    apply: () => noop,
+    construct: () => noop
+  });
+  window.L = noop;
+}
+const map = L.map('map', { zoomControl: true }).setView([43.2445, 76.9000], 11);
+// Esri basemaps need no API key and load from file:// pages. If none of their tiles load,
+// the map falls back to tile.openstreetmap.org (works once the site is hosted on https).
+let tileLayerObj = null, refLayerObj = null, providerIdx = 0, tileOk = 0, tileErr = 0;
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+function tileProviders(dark) {
+  return [
+    { url: ESRI + (dark ? 'Canvas/World_Dark_Gray_Base' : 'World_Street_Map') + '/MapServer/tile/{z}/{y}/{x}',
+      ref: dark ? ESRI + 'Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}' : null,
+      attr: 'Tiles © Esri', native: dark ? 16 : 19 },
+    { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', ref: null,
+      attr: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>', native: 19 }
+  ];
+}
+function applyTiles() {
+  const dark = htmlEl.getAttribute('data-theme') === 'dark';
+  const pr = tileProviders(dark)[providerIdx];
+  if (tileLayerObj) map.removeLayer(tileLayerObj);
+  if (refLayerObj) { map.removeLayer(refLayerObj); refLayerObj = null; }
+  tileOk = 0; tileErr = 0;
+  tileLayerObj = L.tileLayer(pr.url, { maxZoom: 19, maxNativeZoom: pr.native, attribution: pr.attr });
+  tileLayerObj.on('tileload', () => { tileOk++; });
+  tileLayerObj.on('tileerror', () => {
+    tileErr++;
+    if (tileOk === 0 && tileErr >= 4 && providerIdx < 1) { providerIdx++; applyTiles(); }
+  });
+  tileLayerObj.addTo(map);
+  if (pr.ref) refLayerObj = L.tileLayer(pr.ref, { maxZoom: 19, maxNativeZoom: pr.native }).addTo(map);
+}
+applyTiles();
+L.control.scale({ metric: true, imperial: false }).addTo(map);
+
+const groups = {};
+TYPE_KEYS.forEach(k => { groups[k] = L.layerGroup().addTo(map); });
+const markers = [];
+const active = new Set(TYPE_KEYS);
+
+function routeURL(p) { return 'https://www.google.com/maps/dir/?api=1&destination=' + p.lat + ',' + p.lng + '&travelmode=walking'; }
+function popupHTML(p) {
+  const T = TYPES[p.type];
+  return '<div class="pop"><strong>' + esc(p[lang]) + '</strong>' +
+    '<span class="pop-type" style="--c:' + T.color + '">' + esc(T[lang].name) + '</span>' +
+    '<div class="pop-d">' + esc(districtLabel(p.dist)) + '</div>' +
+    '<a href="' + routeURL(p) + '" target="_blank" rel="noopener"><i class="fa-solid fa-route"></i> ' + esc(t('route')) + '</a>' +
+    '<small>' + esc(t('approx')) + '</small></div>';
+}
+POINTS.forEach(p => {
+  const m = L.marker([p.lat, p.lng], { icon: makeIcon(p.type), title: p.ru, riseOnHover: true });
+  m.bindPopup(() => popupHTML(p));
+  m.addTo(groups[p.type]);
+  markers[p.i] = m;
+});
+
+function fitAll() {
+  const vis = POINTS.filter(p => active.has(p.type)).map(p => [p.lat, p.lng]);
+  if (vis.length) map.fitBounds(vis, { padding: [30, 30] });
+}
+fitAll();
+// recompute size once layout and fonts have settled, otherwise fitBounds zooms out too far
+setTimeout(() => { map.invalidateSize(); fitAll(); }, 300);
+window.addEventListener('load', () => { map.invalidateSize(); fitAll(); });
+window.addEventListener('resize', () => map.invalidateSize());
+$('fitBtn').addEventListener('click', fitAll);
+
+function focusPoint(i) {
+  const p = POINTS[i];
+  if (!active.has(p.type)) { active.add(p.type); applyFilters(); }
+  $('map-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => { map.flyTo([p.lat, p.lng], 16, { duration: .8 }); markers[i].openPopup(); }, 350);
+}
+
+/* ================= LEGEND / FILTERS ================= */
+function renderLegend() {
+  const counts = {};
+  POINTS.forEach(p => counts[p.type] = (counts[p.type] || 0) + 1);
+  $('legend').innerHTML = TYPE_KEYS.map(k =>
+    '<button type="button" class="legend-item" data-type="' + k + '" aria-pressed="' + active.has(k) + '">' +
+    '<span class="pin-wrap">' + pinHTML(k) + '</span>' +
+    '<span class="txt"><b>' + esc(TYPES[k][lang].name) + '</b><small>' + esc(TYPES[k][lang].desc) + '</small></span>' +
+    '<em>' + (counts[k] || 0) + '</em></button>'
+  ).join('');
+}
+$('legend').addEventListener('click', e => {
+  const b = e.target.closest('.legend-item');
+  if (!b) return;
+  const k = b.dataset.type;
+  if (active.has(k)) active.delete(k); else active.add(k);
+  applyFilters();
+});
+$('showAllBtn').addEventListener('click', () => { TYPE_KEYS.forEach(k => active.add(k)); applyFilters(); });
+
+function setActive(types) {
+  active.clear();
+  types.forEach(k => active.add(k));
+  applyFilters();
+}
+function applyFilters() {
+  TYPE_KEYS.forEach(k => {
+    if (active.has(k)) { if (!map.hasLayer(groups[k])) map.addLayer(groups[k]); }
+    else if (map.hasLayer(groups[k])) map.removeLayer(groups[k]);
+  });
+  renderLegend();
+  renderNearest();
+  renderList();
+}
+
+/* ================= GEOLOCATION / NEAREST ================= */
+let userPos = null, userMarker = null, userCircle = null, nearLine = null;
+
+function hav(a, b, c, d) {
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (c - a) * r, dLng = (d - b) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+function fmtDist(m) {
+  if (m < 1000) return Math.round(m / 10) * 10 + (lang === 'kk' ? ' м' : ' м');
+  return (m / 1000).toFixed(1).replace('.', ',') + (lang === 'kk' ? ' км' : ' км');
+}
+function setStatus(key, kind) {
+  const el = $('geoStatus');
+  if (!key) { el.className = 'status'; el.textContent = ''; el.dataset.key = ''; return; }
+  el.dataset.key = key; el.dataset.kind = kind;
+  el.className = 'status show ' + kind;
+  el.textContent = t(key);
+}
+function itemHTML(p, rank, d) {
+  return '<div class="item">' +
+    (rank ? '<div class="rank">' + rank + '</div>' : '') +
+    '<div class="pin-wrap">' + pinHTML(p.type) + '</div>' +
+    '<div class="info"><b>' + esc(p[lang]) + '</b><small>' + esc(TYPES[p.type][lang].name) + ' · ' + esc(districtLabel(p.dist)) + '</small></div>' +
+    (d != null ? '<div class="dist">' + fmtDist(d) + '</div>' : '') +
+    '<div class="acts"><button type="button" class="btn btn-outline btn-sm" data-focus="' + p.i + '"><i class="fa-solid fa-location-dot"></i> ' + esc(t('onMap')) + '</button>' +
+    '<a class="btn btn-sm" href="' + routeURL(p) + '" target="_blank" rel="noopener"><i class="fa-solid fa-route"></i> ' + esc(t('route')) + '</a></div></div>';
+}
+function renderNearest() {
+  const box = $('nearList');
+  if (!userPos) { box.innerHTML = '<p class="muted">' + esc(t('nearEmpty')) + '</p>'; return; }
+  if (!active.size) { box.innerHTML = '<p class="muted">' + esc(t('noTypes')) + '</p>'; return; }
+  const list = POINTS.filter(p => active.has(p.type))
+    .map(p => ({ p, d: hav(userPos.lat, userPos.lng, p.lat, p.lng) }))
+    .sort((a, b) => a.d - b.d).slice(0, 10);
+  box.innerHTML = list.map((x, n) => itemHTML(x.p, n + 1, x.d)).join('');
+}
+function drawNearLine() {
+  if (nearLine) { map.removeLayer(nearLine); nearLine = null; }
+  if (!userPos || !active.size) return;
+  const list = POINTS.filter(p => active.has(p.type))
+    .map(p => ({ p, d: hav(userPos.lat, userPos.lng, p.lat, p.lng) })).sort((a, b) => a.d - b.d);
+  if (!list.length) return;
+  nearLine = L.polyline([[userPos.lat, userPos.lng], [list[0].p.lat, list[0].p.lng]], { color: '#2563eb', weight: 3, dashArray: '6 8' }).addTo(map);
+}
+
+let pickMode = false;
+function enablePick() {
+  pickMode = true;
+  map.getContainer().style.cursor = 'crosshair';
+}
+function disablePick() {
+  pickMode = false;
+  map.getContainer().style.cursor = '';
+}
+map.on('click', e => {
+  if (!pickMode) return;
+  disablePick();
+  setUserPosition(e.latlng.lat, e.latlng.lng, null, true);
+});
+$('pickBtn').addEventListener('click', () => {
+  $('map-section').scrollIntoView({ behavior: 'smooth' });
+  enablePick();
+  setStatus('pickHint', 'info');
+});
+
+function setUserPosition(lat, lng, acc, manual) {
+    userPos = { lat: lat, lng: lng, acc: acc };
+    if (userMarker) map.removeLayer(userMarker);
+    if (userCircle) map.removeLayer(userCircle);
+    userMarker = L.marker([userPos.lat, userPos.lng], { icon: L.divIcon({ className: 'bin-icon', html: '<div class="me-pin"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 1000 }).addTo(map);
+    if (userPos.acc && userPos.acc < 3000) userCircle = L.circle([userPos.lat, userPos.lng], { radius: userPos.acc, color: '#2563eb', weight: 1, fillOpacity: .08 }).addTo(map);
+    const far = hav(userPos.lat, userPos.lng, 43.2445, 76.9000) > 50000;
+    setStatus(far ? 'geoFar' : (manual ? 'geoManualOk' : 'geoOk'), far ? 'warn' : 'ok');
+    renderNearest(); renderList(); drawNearLine();
+    const near = POINTS.filter(p => active.has(p.type))
+      .map(p => ({ p, d: hav(userPos.lat, userPos.lng, p.lat, p.lng) })).sort((a, b) => a.d - b.d).slice(0, 3);
+    if (!far && near.length) map.fitBounds([[userPos.lat, userPos.lng]].concat(near.map(x => [x.p.lat, x.p.lng])), { padding: [50, 50], maxZoom: 16 });
+    else if (far) fitAll();
+}
+
+function locate() {
+  if (!navigator.geolocation) { setStatus('geoUnsupported', 'err'); enablePick(); return; }
+  if (window.isSecureContext === false && location.protocol !== 'file:') { setStatus('geoInsecure', 'err'); enablePick(); return; }
+  setStatus('geoWaiting', 'info');
+  $('locateBtn').disabled = true; $('heroLocate').disabled = true;
+  let lowTried = false;
+  const geoOk = pos => {
+    $('locateBtn').disabled = false; $('heroLocate').disabled = false;
+    disablePick();
+    setUserPosition(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, false);
+  };
+  const geoFail = err => {
+    // PCs without GPS often time out in high-accuracy mode: retry once with network location
+    if (!lowTried && err.code !== 1) {
+      lowTried = true;
+      navigator.geolocation.getCurrentPosition(geoOk, geoFail, { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 });
+      return;
+    }
+    $('locateBtn').disabled = false; $('heroLocate').disabled = false;
+    setStatus(err.code === 1 ? 'geoDenied' : err.code === 3 ? 'geoTimeout' : 'geoUnavailable', 'err');
+    enablePick(); // manual fallback: the next click on the map sets the position
+  };
+  navigator.geolocation.getCurrentPosition(geoOk, geoFail, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+}
+$('locateBtn').addEventListener('click', locate);
+$('heroLocate').addEventListener('click', () => { $('map-section').scrollIntoView({ behavior: 'smooth' }); locate(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-focus]');
+  if (b) focusPoint(+b.dataset.focus);
+});
+
+/* ================= FULL LIST ================= */
+function fillListControls() {
+  const dSel = $('listDistrict'), sSel = $('listSort');
+  const dv = dSel.value, sv = sSel.value;
+  dSel.innerHTML = '<option value="">' + esc(t('allDistricts')) + '</option>' +
+    Object.keys(DISTRICTS).map(k => '<option value="' + k + '">' + esc(districtLabel(k)) + '</option>').join('');
+  sSel.innerHTML = '<option value="district">' + esc(t('sortDistrict')) + '</option><option value="name">' + esc(t('sortName')) + '</option><option value="distance">' + esc(t('sortDistance')) + '</option>';
+  dSel.value = dv; sSel.value = sv || 'district';
+}
+function renderList() {
+  const q = $('listSearch').value.trim().toLowerCase();
+  const dFilter = $('listDistrict').value;
+  let sort = $('listSort').value || 'district';
+  if (sort === 'distance' && !userPos) sort = 'district';
+  let items = POINTS.filter(p => active.has(p.type) && (!dFilter || p.dist === dFilter) &&
+    (!q || p.ru.toLowerCase().includes(q) || p.kk.toLowerCase().includes(q)));
+  items = items.map(p => ({ p, d: userPos ? hav(userPos.lat, userPos.lng, p.lat, p.lng) : null }));
+  $('listCount').textContent = t('shown') + ' ' + items.length + ' ' + t('of') + ' ' + POINTS.length;
+  const box = $('fullList');
+  if (!items.length) { box.innerHTML = '<p class="muted">' + esc(t('nothing')) + '</p>'; return; }
+  if (sort === 'district') {
+    box.innerHTML = Object.keys(DISTRICTS).map(k => {
+      const g = items.filter(x => x.p.dist === k).sort((a, b) => a.p[lang].localeCompare(b.p[lang], lang));
+      if (!g.length) return '';
+      return '<h3 class="dist-title">' + esc(districtLabel(k)) + ' <small>(' + g.length + ')</small></h3><div class="full-list">' +
+        g.map(x => itemHTML(x.p, 0, x.d)).join('') + '</div>';
+    }).join('');
+  } else {
+    if (sort === 'name') items.sort((a, b) => a.p[lang].localeCompare(b.p[lang], lang));
+    else items.sort((a, b) => a.d - b.d);
+    box.innerHTML = '<div class="full-list">' + items.map(x => itemHTML(x.p, 0, x.d)).join('') + '</div>';
+  }
+}
+['listSearch', 'listDistrict', 'listSort'].forEach(id => $(id).addEventListener('input', renderList));
+
+/* ================= AI SORTER ================= */
+const GUIDE = {
+  plastic: { color: '#0ea5e9', icon: 'fa-bottle-water', bins: ['s', 'r', 'z'] },
+  paper:   { color: '#f59e0b', icon: 'fa-newspaper', bins: ['s', 'r', 'z'] },
+  glass:   { color: '#8b5cf6', icon: 'fa-wine-bottle', bins: ['s', 'r', 'z'] },
+  metal:   { color: '#64748b', icon: 'fa-screwdriver-wrench', bins: ['r', 's', 'z'] },
+  organic: { color: '#16a34a', icon: 'fa-leaf', bins: ['y', 'z'] },
+  special: { color: '#ef4444', icon: 'fa-battery-half', bins: ['h'] },
+  other:   { color: '#475569', icon: 'fa-trash', bins: ['y', 'z', 'p'] }
+};
+// order matters: first matching category wins for each prediction
+const CATS = [
+  ['special', /cellular telephone|cell phone|mobile phone|notebook computer|laptop|\bipod\b|computer mouse|remote control|modem|keyboard|monitor|television|radio|joystick|hard disc|printer|projector|loudspeaker|power drill|flashlight|torch|lighter|microwave|digital clock|digital watch|stopwatch|dial telephone|pay-phone|hand-held computer|cassette|tape player|reflex camera|\bcd player|iron\b|electric/i],
+  ['glass', /wine bottle|beer bottle|beer glass|red wine|wine glass|goblet|vase|perfume|cocktail shaker|\bjar\b|pitcher|eggnog|\bjug\b/i],
+  ['plastic', /water bottle|pop bottle|soda bottle|plastic bag|water jug|\bpail\b|bucket|soap dispenser|lotion|sunscreen|hair spray|measuring cup|beaker|diaper|shopping basket|\btub\b|pill bottle|\bbottle\b|\bcup\b|\bcrate\b|syringe/i],
+  ['paper', /envelope|carton|book jacket|binder|\bnotebook\b|packet|comic book|paper towel|toilet tissue|\bmenu\b|crossword|newspaper|cardboard|jigsaw|\bbook/i],
+  ['metal', /can opener|\btin\b|\bpan\b|\bwok\b|frying|caldron|\bpot\b|spatula|ladle|cleaver|hatchet|padlock|\bnail\b|\bscrew|\bhook\b|\bchain\b|safety pin|buckle|\bbolt\b|hammer|wrench|plunger|barrel|strainer|\bsaw\b|\bfork\b|\bspoon\b/i],
+  ['organic', /banana|orange|lemon|strawberry|granny smith|\bapple|pineapple|\bfig\b|pomegranate|jackfruit|custard apple|broccoli|cauliflower|cucumber|zucchini|squash|mushroom|bell pepper|\bcorn\b|artichoke|cabbage|acorn|bagel|pretzel|pizza|hotdog|hot dog|cheeseburger|bread|loaf|burrito|guacamole|meat loaf|potpie|omelet|ice cream|dough|spaghetti|carbonara|\bhay\b|daisy|\bear\b/i]
+];
+function classifyWaste(preds) {
+  const score = {};
+  preds.forEach(p => {
+    let cat = 'other';
+    for (const [c, re] of CATS) { if (re.test(p.className)) { cat = c; break; } }
+    score[cat] = (score[cat] || 0) + p.probability;
+  });
+  let best = 'other', bs = -1;
+  Object.keys(score).forEach(c => { if (score[c] > bs) { bs = score[c]; best = c; } });
+  return best;
+}
+
+let model = null, modelPromise = null, lastAI = null;
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+}
+function ensureModel() {
+  if (model) return Promise.resolve(model);
+  if (!modelPromise) {
+    modelPromise = loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0')
+      .then(() => loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0'))
+      .then(() => window.mobilenet.load())
+      .then(m => { model = m; return m; })
+      .catch(e => { modelPromise = null; throw e; });
+  }
+  return modelPromise;
+}
+window.addEventListener('load', () => setTimeout(() => { ensureModel().catch(() => {}); }, 2500));
+
+const imageUpload = $('imageUpload'), imagePreview = $('imagePreview'), aiResult = $('aiResult'), aiLoading = $('aiLoading'), dropZone = $('dropZone');
+dropZone.addEventListener('click', () => imageUpload.click());
+dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); imageUpload.click(); } });
+imageUpload.addEventListener('change', () => handleImage(imageUpload.files[0]));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = ''; });
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = ''; if (e.dataTransfer.files.length) handleImage(e.dataTransfer.files[0]); });
+
+function renderAI() {
+  if (!lastAI) return;
+  const g = GUIDE[lastAI.cat];
+  aiResult.innerHTML =
+    '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem"><i class="fa-solid ' + g.icon + '" style="font-size:1.4rem;color:' + g.color + '"></i>' +
+    '<strong style="font-size:1.15rem;color:' + g.color + '">' + esc(t('g_' + lastAI.cat)) + '</strong></div>' +
+    (lastAI.prob < .15 ? '<p style="margin-bottom:.5rem"><i class="fa-solid fa-circle-info"></i> ' + esc(t('aiLow')) + '</p>' : '') +
+    '<p>' + esc(t('g_' + lastAI.cat + '_t')) + '</p>' +
+    '<p class="muted" style="margin-top:.6rem;font-size:.85rem">' + esc(t('aiConf')) + ': ' + Math.round(lastAI.prob * 100) + '% · ' + esc(t('aiSeen')) + ': ' + esc(lastAI.cls) + '</p>' +
+    '<p class="muted" style="font-size:.8rem;margin-top:.3rem">' + esc(t('aiDisclaimer')) + '</p>' +
+    '<button type="button" class="btn btn-secondary btn-sm" id="aiShowBtn" style="margin-top:.8rem"><i class="fa-solid fa-map-location-dot"></i> ' + esc(t('aiShow')) + '</button>';
+  aiResult.classList.add('show');
+  $('aiShowBtn').addEventListener('click', () => {
+    setActive(GUIDE[lastAI.cat].bins);
+    $('map-section').scrollIntoView({ behavior: 'smooth' });
+    fitAll();
+  });
+}
+function handleImage(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    imagePreview.src = ev.target.result;
+    imagePreview.style.display = 'block';
+    aiResult.classList.remove('show');
+    aiLoading.classList.remove('hidden');
+    aiLoading.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + esc(model ? t('aiLoading') : t('aiModel'));
+    try {
+      const m = await ensureModel();
+      aiLoading.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + esc(t('aiLoading'));
+      const img = new Image();
+      img.src = ev.target.result;
+      await new Promise((r, j) => { img.onload = r; img.onerror = j; });
+      const preds = await m.classify(img, 5);
+      lastAI = { cat: classifyWaste(preds), prob: preds[0].probability, cls: preds[0].className.split(',')[0] };
+      renderAI();
+    } catch (err) {
+      lastAI = null;
+      aiResult.innerHTML = '<p style="color:var(--danger)">' + esc(t('aiError')) + '</p>';
+      aiResult.classList.add('show');
+    } finally {
+      aiLoading.classList.add('hidden');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ================= CALCULATOR ================= */
+const plastic = $('plastic'), sortR = $('sort'), paper = $('paper'), transport = $('transport');
+function updateCalc() {
+  $('plasticVal').textContent = plastic.value;
+  $('sortVal').textContent = sortR.value;
+  $('paperVal').textContent = paper.value;
+  $('transportVal').textContent = t('transport')[transport.value];
+  const plasticCO2 = plastic.value * 52 * 0.06;
+  const total = Math.max(40, 220 - sortR.value * 15 - paper.value * 12 * 0.8 - transport.value * 80 + plasticCO2);
+  const waste = Math.max(20, 120 - sortR.value * 12 - paper.value * 3);
+  $('co2Result').textContent = '~ ' + Math.round(total) + ' ' + t('calcCO2');
+  $('wasteResult').textContent = t('calcWaste').replace('{n}', Math.round(waste));
+}
+[plastic, sortR, paper, transport].forEach(el => el.addEventListener('input', updateCalc));
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  { q: { ru: 'Что сделать с пластиковой бутылкой перед сдачей?', kk: 'Пластик бөтелкені өткізер алдында не істеу керек?' },
+    o: [{ ru: 'Опустошить, сполоснуть и сплющить', kk: 'Босату, шаю және жаншу' }, { ru: 'Выбросить как есть, мыть не нужно', kk: 'Сол күйінде тастау, жуудың қажеті жоқ' }, { ru: 'Оставить внутри остатки напитка', kk: 'Ішінде сусын қалдығын қалдыру' }], c: 0 },
+  { q: { ru: 'Что нельзя класть в контейнер для стекла?', kk: 'Шыныға арналған контейнерге нені салуға болмайды?' },
+    o: [{ ru: 'Стеклянную бутылку', kk: 'Шыны бөтелке' }, { ru: 'Зеркало и оконное стекло', kk: 'Айна және терезе шынысы' }, { ru: 'Стеклянную банку', kk: 'Шыны банка' }], c: 1 },
+  { q: { ru: 'Какая самая частая ошибка при сортировке?', kk: 'Сұрыптаудағы ең жиі қате қандай?' },
+    o: [{ ru: 'Мыть бумагу', kk: 'Қағазды жуу' }, { ru: 'Смешивать грязный пластик с чистым', kk: 'Лас пластикті таза пластикпен араластыру' }, { ru: 'Сплющивать банки', kk: 'Банкаларды жаншу' }], c: 1 },
+  { q: { ru: 'Куда нести использованные батарейки?', kk: 'Қолданылған батарейкаларды қайда апару керек?' },
+    o: [{ ru: 'В обычный бак во дворе', kk: 'Ауладағы кәдімгі контейнерге' }, { ru: 'В пункт приёма опасных отходов', kk: 'Қауіпті қалдықтар қабылдау пунктіне' }, { ru: 'В контейнер для бумаги', kk: 'Қағаз контейнеріне' }], c: 1 },
+  { q: { ru: 'Можно ли сдавать на переработку коробку из-под пиццы с жирными пятнами?', kk: 'Майлы дақтары бар пицца қорабын қайта өңдеуге өткізуге бола ма?' },
+    o: [{ ru: 'Да, это обычный картон', kk: 'Иә, бұл кәдімгі картон' }, { ru: 'Нет, жирная бумага не перерабатывается', kk: 'Жоқ, майлы қағаз қайта өңделмейді' }, { ru: 'Да, если сложить вдвое', kk: 'Иә, екі бүктесе' }], c: 1 }
+];
+let qi = 0, qScore = 0, qAns = [];
+function renderQuiz() {
+  const box = $('quizBox');
+  if (qi >= QUIZ.length) {
+    const msg = qScore === QUIZ.length ? t('quizGreat') : qScore >= Math.ceil(QUIZ.length * .6) ? t('quizGood') : t('quizLow');
+    box.innerHTML = '<p style="font-weight:600;margin-bottom:1rem">' + esc(t('quizResult')) + ': <strong>' + qScore + ' / ' + QUIZ.length + '</strong>. ' + esc(msg) + '</p>' +
+      '<button type="button" class="btn" id="quizAgain"><i class="fa-solid fa-rotate-right"></i> ' + esc(t('quizAgain')) + '</button>';
+    $('quizAgain').addEventListener('click', () => { qi = 0; qScore = 0; qAns = []; renderQuiz(); });
+    return;
+  }
+  const Q = QUIZ[qi], ans = qAns[qi];
+  box.innerHTML = '<p class="muted" style="margin-bottom:.5rem">' + esc(t('quizQ')) + ' ' + (qi + 1) + ' / ' + QUIZ.length + '</p>' +
+    '<strong class="quiz-q">' + esc(Q.q[lang]) + '</strong>' +
+    Q.o.map((o, i) => {
+      let cls = '';
+      if (ans !== undefined) { if (i === Q.c) cls = ' correct'; else if (i === ans) cls = ' wrong'; }
+      return '<button type="button" class="quiz-option' + cls + '" data-i="' + i + '"' + (ans !== undefined ? ' disabled' : '') + '>' + esc(o[lang]) + '</button>';
+    }).join('') +
+    (ans !== undefined ? '<button type="button" class="btn btn-secondary" id="quizNext" style="margin-top:.6rem">' + esc(t('quizNext')) + '</button>' : '');
+  box.querySelectorAll('.quiz-option').forEach(b => b.addEventListener('click', () => {
+    const i = +b.dataset.i; qAns[qi] = i; if (i === Q.c) qScore++; renderQuiz();
+  }));
+  const nx = $('quizNext');
+  if (nx) nx.addEventListener('click', () => { qi++; renderQuiz(); });
+}
+
+/* ================= REPORT FORM ================= */
+function fillReportSelects() {
+  const d = $('reportDistrict'), ty = $('reportType');
+  const dv = d.value, tv = ty.value;
+  d.innerHTML = '<option value="">' + esc(t('repDistrict')) + '</option>' + Object.keys(DISTRICTS).map(k => '<option value="' + k + '">' + esc(districtLabel(k)) + '</option>').join('');
+  ty.innerHTML = '<option value="">' + esc(t('repType')) + '</option>' + ['missing', 'full', 'dirty', 'new', 'other'].map(k => '<option value="' + k + '">' + esc(t('rt_' + k)) + '</option>').join('');
+  d.value = dv; ty.value = tv;
+}
+$('reportForm').addEventListener('submit', e => {
+  e.preventDefault();
+  try {
+    const arr = JSON.parse(store('ecoloc_reports') || '[]');
+    arr.push({ d: $('reportDistrict').value, a: $('reportAddress').value, t: $('reportType').value, c: $('reportDesc').value, ts: Date.now() });
+    store('ecoloc_reports', JSON.stringify(arr));
+  } catch (err) { /* storage unavailable */ }
+  const ok = $('reportSuccess');
+  ok.textContent = t('repOk'); ok.classList.remove('hidden');
+  e.target.reset();
+  setTimeout(() => ok.classList.add('hidden'), 5000);
+});
+
+/* ================= STATS ================= */
+function renderStats() {
+  const sortCount = POINTS.filter(p => p.type === 's' || p.type === 'r').length;
+  const items = [[POINTS.length, 'stPoints'], [Object.keys(DISTRICTS).length, 'stDistricts'], [TYPE_KEYS.length, 'stTypes'], [sortCount, 'stSorting']];
+  $('statsGrid').innerHTML = items.map(x => '<div class="stat-box"><div class="stat-number">' + x[0] + '</div><div class="stat-label">' + esc(t(x[1])) + '</div></div>').join('');
+}
+
+/* ================= APPLY LANGUAGE ================= */
+function applyLang() {
+  htmlEl.lang = lang === 'kk' ? 'kk' : 'ru';
+  document.title = 'EcoLoc Алматы';
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  $('langRu').setAttribute('aria-pressed', lang === 'ru');
+  $('langKk').setAttribute('aria-pressed', lang === 'kk');
+  const gs = $('geoStatus');
+  if (gs.dataset.key) gs.textContent = t(gs.dataset.key);
+  fillListControls(); fillReportSelects();
+  renderLegend(); renderNearest(); renderList(); renderQuiz(); renderStats(); updateCalc(); renderAI();
+  if (MAP_MISSING) {
+    const mp = $('map');
+    mp.style.display = 'flex'; mp.style.alignItems = 'center'; mp.style.justifyContent = 'center';
+    mp.style.padding = '1.5rem'; mp.style.textAlign = 'center'; mp.style.background = 'var(--bg)';
+    mp.textContent = t('mapMissing');
+  } else {
+    map.closePopup();
+  }
+}
+function setLang(l) { lang = l; store('ecoloc_lang', l); applyLang(); }
+$('langRu').addEventListener('click', () => setLang('ru'));
+$('langKk').addEventListener('click', () => setLang('kk'));
+
+applyLang();
+
+/* ================= PWA Service Worker ================= */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
+      .then(reg => { console.log('EcoLoc SW registered', reg.scope); })
+      .catch(err => { console.warn('EcoLoc SW failed', err); });
+  });
+}
+})();
+</script>
+</body>
+</html>
